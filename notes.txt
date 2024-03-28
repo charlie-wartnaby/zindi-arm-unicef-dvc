@@ -1,0 +1,19 @@
+Competition: https://zindi.africa/competitions/arm-unicef-disaster-vulnerability-challenge
+
+
+Not well explained in competition but nature of required submission explained in discussion
+https://zindi.africa/competitions/arm-unicef-disaster-vulnerability-challenge/discussions/20371
+
+imageid_categoryid   [count of that class in image]
+
+e.g.
+id_uawi0k5spci5_1	1  [count of 'other'=1 in image d_uawi0k5spci5.tif]
+id_uawi0k5spci5_2	7  [count of 'tin'=2 ...]
+id_uawi0k5spci5_3	2  [count of 'thatch'=3 ...]
+
+So bounding boxes not required for submission, only to train something that can count.
+
+Useful example Kaggle notebook referenced here:
+https://zindi.africa/competitions/arm-unicef-disaster-vulnerability-challenge/discussions/20382
+https://www.kaggle.com/code/rashidrk/getting-started-with-zindi-arm-unicef-competition
+
