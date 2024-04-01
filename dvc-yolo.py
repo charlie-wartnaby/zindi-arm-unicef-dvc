@@ -61,13 +61,16 @@ def create_training_label_files(train_df):
         with open(textfile_path, "w") as fd:
             for row in row_list:
                 if row.category_id != TYPE_NONE:
-                    # Supplied bounding boxes in correct x, y, width, height
-                    # order already in Python list format
+                    # Supplied bounding boxes in x, y, width, height; but in pixels,
+                    # and we need centre coordinates not top left corner. In Yolo,
+                    # top left of image is still (0, 0) but bottom right is (1, 1).
                     x, y, dx, dy = eval(row.bbox)
-                    x /= width
-                    y /= height
+                    x = (x + width / 2) / width
+                    y = (y + height / 2) / height
                     dx /= width
                     dy /= height
+                    # YOLO docs say classes should be zero-based. Does it matter if
+                    # we have an unused class 0? TODO but not worrying for now.
                     fd.write("%d %f %f %f %f\n" % (row.category_id, x, y, dx, dy))
 
 
