@@ -1,5 +1,6 @@
 
 import os
+import PIL
 import pandas as pd
 import re
 from ultralytics import YOLO
@@ -13,6 +14,8 @@ test_filename  = "Test.csv"
 train_path     = os.path.join(data_folder, train_filename)
 test_path      = os.path.join(data_folder, test_filename)
 
+create_label_files = False
+
 TYPE_NONE   = 0
 TYPE_OTHER  = 1
 TYPE_TIN    = 2
@@ -21,7 +24,8 @@ TYPE_THATCH = 3
 
 def main():
     train_df, test_df = load_clean_metadata()
-    create_training_label_files(train_df)
+    if create_label_files: 
+        create_training_label_files(train_df)
 
 
 def load_clean_metadata():
@@ -35,16 +39,23 @@ def load_clean_metadata():
 
 
 def create_training_label_files(train_df):
+    """Create a text file for each training image listing the known
+    classes and bounding boxes of the labelled objects. See
+    https://docs.ultralytics.com/datasets/detect/#ultralytics-yolo-format """
+
     image_dict = {}
     for row in train_df.itertuples():
         if row.image_id not in image_dict:
             image_dict[row.image_id] = []
         image_dict[row.image_id].append(row)
     
-    re_brackets_commas = re.compile("(\[|\]|,)")
     os.makedirs(labels_folder, exist_ok=True)
 
     for image_id, row_list in image_dict.items():
+        imagefile_name = image_id + ".tif"
+        imagefile_path = os.path.join(images_folder, imagefile_name)
+        image = PIL.Image.open(imagefile_path)
+        width, height = image.size
         textfile_name = image_id + ".txt"
         textfile_path = os.path.join(labels_folder, textfile_name)
         with open(textfile_path, "w") as fd:
@@ -52,9 +63,12 @@ def create_training_label_files(train_df):
                 if row.category_id != TYPE_NONE:
                     # Supplied bounding boxes in correct x, y, width, height
                     # order already in Python list format
-                    bbox_str = str(row.bbox)
-                    bbox_str = re_brackets_commas.sub("", bbox_str)
-                    fd.write("%d %s\n" % (row.category_id, bbox_str))
+                    x, y, dx, dy = eval(row.bbox)
+                    x /= width
+                    y /= height
+                    dx /= width
+                    dy /= height
+                    fd.write("%d %f %f %f %f\n" % (row.category_id, x, y, dx, dy))
 
 
 if __name__ == "__main__":
