@@ -1,0 +1,12 @@
+# Train/val/test sets as 1) dir: path/to/imgs, 2) file: path/to/imgs.txt, or 3) list: [path/to/imgs1, path/to/imgs2, ..]
+path: data # dataset root dir
+train: Images/Images # train images (relative to 'path') 4 images
+val: Images/Images  # val images (relative to 'path') 4 images
+test:  # test images (optional)
+
+# Classes
+names:
+  0: none_maybe_should_delete
+  1: other
+  2: tin
+  3: thatch
