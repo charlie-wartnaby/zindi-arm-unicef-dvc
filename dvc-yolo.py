@@ -26,7 +26,7 @@ def main():
     train_df, test_df = load_clean_metadata()
     if create_label_files: 
         create_training_label_files(train_df)
-
+    train(train_df)
 
 def load_clean_metadata():
     train_df = pd.read_csv(train_path)
@@ -72,6 +72,11 @@ def create_training_label_files(train_df):
                     # YOLO docs say classes should be zero-based. Does it matter if
                     # we have an unused class 0? TODO but not worrying for now.
                     fd.write("%d %f %f %f %f\n" % (row.category_id, x, y, dx, dy))
+
+
+def train(train_df):
+    model = YOLO('yolov8n.pt')
+    results = model.train(data='dvc-dataset.yaml', epochs=1, imgsz=640)
 
 
 if __name__ == "__main__":
