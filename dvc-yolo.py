@@ -19,12 +19,14 @@ test_path      = os.path.join(data_folder, test_filename)
 yolo_folder        = os.path.join(data_folder, "yolo")
 yolo_images_folder = os.path.join(yolo_folder, "images")
 yolo_labels_folder = os.path.join(yolo_folder, "labels")
-# then 'train' and 'val' beneath each of those
+# then 'train' and 'val' beneath each of those; also:
+yolo_test_folder   = os.path.join(yolo_folder, "test")
 
 
-do_create_label_files = True
-do_copy_to_yolo_layout = True
-do_train = True
+do_create_label_files = False
+do_copy_train_val_to_yolo = False
+do_copy_test_to_yolo = True
+do_train = False
 
 
 TYPE_NONE   = 0
@@ -46,8 +48,13 @@ def main():
 
     train_ids, val_ids = train_val_split(train_image_dict, train_proportion)
 
-    if do_copy_to_yolo_layout:
-        create_copy_yolo_layout(train_ids, val_ids)
+    if do_copy_train_val_to_yolo:
+        create_copy_train_val_yolo(train_ids, val_ids)
+
+    test_ids = list(test_df["image_id"])
+
+    if do_copy_test_to_yolo:
+        copy_test_yolo(test_ids)
 
     if do_train:
         train(train_df, train_epochs)
@@ -119,7 +126,7 @@ def train_val_split(train_image_dict, train_proportion):
     return train_ids, val_ids
 
 
-def create_copy_yolo_layout(train_ids, val_ids):
+def create_copy_train_val_yolo(train_ids, val_ids):
     print("Copying image and label files into YOLO directory layout...")
     if os.path.exists(yolo_folder):
         # Start with clean slate
@@ -134,6 +141,16 @@ def create_copy_yolo_layout(train_ids, val_ids):
         copy_image_and_label_files(id, 'val')
 
 
+def copy_test_yolo(test_ids):
+    print("Copying test images to YOLO directory for inference")
+    os.makedirs(yolo_test_folder, exist_ok=True)
+    for id in test_ids:
+        image_filename = id + ".tif"
+        image_src_path = os.path.join(images_folder, image_filename)
+        image_dest_path = os.path.join(yolo_test_folder, image_filename)
+        shutil.copy(image_src_path, image_dest_path)
+
+        
 def copy_image_and_label_files(id, category):
     image_filename = id + ".tif"
     label_filename = id + ".txt"
