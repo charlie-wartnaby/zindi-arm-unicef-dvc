@@ -22,8 +22,8 @@ yolo_labels_folder = os.path.join(yolo_folder, "labels")
 # then 'train' and 'val' beneath each of those
 
 
-do_create_label_files = False
-do_copy_to_yolo_layout = False
+do_create_label_files = True
+do_copy_to_yolo_layout = True
 do_train = True
 
 
@@ -32,7 +32,8 @@ TYPE_OTHER  = 1
 TYPE_TIN    = 2
 TYPE_THATCH = 3
 
-train_proportion = 0.8
+train_proportion = 0.7
+train_epochs = 20
 
 
 def main():
@@ -49,7 +50,7 @@ def main():
         create_copy_yolo_layout(train_ids, val_ids)
 
     if do_train:
-        train(train_df)
+        train(train_df, train_epochs)
 
 
 def load_clean_metadata():
@@ -99,8 +100,8 @@ def create_training_label_files(image_dict):
                     # and we need centre coordinates not top left corner. In Yolo,
                     # top left of image is still (0, 0) but bottom right is (1, 1).
                     x, y, dx, dy = eval(row.bbox)
-                    x = (x + width / 2) / width
-                    y = (y + height / 2) / height
+                    x = (x + dx / 2) / width
+                    y = (y + dy / 2) / height
                     dx /= width
                     dy /= height
                     # YOLO docs say classes should be zero-based. Does it matter if
@@ -144,9 +145,9 @@ def copy_image_and_label_files(id, category):
     shutil.copy(label_src_path, label_dest_path)
 
 
-def train(train_df):
+def train(train_df, epochs):
     model = YOLO('yolov8n.pt')
-    results = model.train(data='dvc-dataset.yaml', epochs=20, imgsz=640)
+    results = model.train(data='dvc-dataset.yaml', epochs=epochs, imgsz=640)
 
 
 if __name__ == "__main__":
