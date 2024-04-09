@@ -4,7 +4,9 @@ import os
 import PIL
 import pandas as pd
 import random
+import re
 import shutil
+import sys
 from ultralytics import YOLO
 
 # Supplied data layout
@@ -17,11 +19,14 @@ train_path     = os.path.join(data_folder, train_filename)
 test_path      = os.path.join(data_folder, test_filename)
 
 # Specific layout required for YOLO to work
-yolo_folder        = os.path.join(data_folder, "yolo")
-yolo_images_folder = os.path.join(yolo_folder, "images")
-yolo_labels_folder = os.path.join(yolo_folder, "labels")
+yolo_folder          = os.path.join(data_folder, "yolo")
+yolo_images_folder   = os.path.join(yolo_folder, "images")
+yolo_labels_folder   = os.path.join(yolo_folder, "labels")
 # then 'train' and 'val' beneath each of those; also:
-yolo_test_folder   = os.path.join(yolo_folder, "test")
+yolo_test_folder     = os.path.join(yolo_folder, "test")
+
+runs_folder          = "runs" # relative to ~/.config/Ultralytics/settings.yaml path
+detect_output_folder = os.path.join(runs_folder, "detect")
 
 
 do_create_label_files     = False
@@ -29,6 +34,7 @@ do_copy_train_val_to_yolo = False
 do_copy_test_to_yolo      = False
 do_train                  = False
 do_inference_test         = True
+do_save_annotated_images  = False
 
 TYPE_NONE   = 0
 TYPE_OTHER  = 1
@@ -177,9 +183,10 @@ def run_prediction(test_ids):
     # Trying on one hardcoded example first to understand what happens
     img_filename = 'id_0b0pzumg4rbl.tif'
     img_path = os.path.join(yolo_test_folder, img_filename)
-    model_filename = 'runs/detect/train11/weights/best.pt'
+    latest_train_dir = get_latest_dir(detect_output_folder, "train")
+    model_filename = os.path.join(latest_train_dir, "weights/best.pt")
     model = YOLO(model_filename)
-    results = model.predict(img_path, save=True)
+    results = model.predict(img_path, save=do_save_annotated_images)
     for i, result in enumerate(results):
         classes = result.boxes.cls
         np_classes = classes.numpy()
@@ -187,6 +194,31 @@ def run_prediction(test_ids):
             num_instances = np.count_nonzero(np_classes == target_class)
             print (img_filename, num_instances)
     pass
+
+
+def get_latest_dir(parent_dir, subdir_base_name):
+    """Find latest folder of train, train2, train3 etc"""
+
+    parent_dir_contents = os.listdir(parent_dir)
+    matcher = re.compile(subdir_base_name + r"([0-9]+)?")
+    highest_suffix = -1
+    best_name = ""
+    for name in parent_dir_contents:
+        match_obj = matcher.match(name)
+        if match_obj:
+            suffix_str = match_obj.group(1)
+            if suffix_str:
+                suffix = int(suffix_str)
+            else:
+                suffix = 0
+            if suffix > highest_suffix:
+                highest_suffix = suffix
+                best_name = name
+    if not best_name:
+        print(f"Error: can't find latest folder starting {subdir_base_name} in {parent_dir}")
+        sys.exit(-1)
+
+    return os.path.join(parent_dir, best_name)
 
 
 if __name__ == "__main__":
