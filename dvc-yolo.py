@@ -178,21 +178,20 @@ def run_training(train_df, epochs):
 
 
 def run_prediction(test_ids):
-    # id_0b0pzumg4rbl.tif
+    # id_0b0pzumg4rbl.tif is good first example
 
     # Trying on one hardcoded example first to understand what happens
-    img_filename = 'id_0b0pzumg4rbl.tif'
-    img_path = os.path.join(yolo_test_folder, img_filename)
+    img_paths = [os.path.join(yolo_test_folder, test_id + ".tif") for test_id in test_ids]
     latest_train_dir = get_latest_dir(detect_output_folder, "train")
     model_filename = os.path.join(latest_train_dir, "weights/best.pt")
     model = YOLO(model_filename)
-    results = model.predict(img_path, save=do_save_annotated_images)
+    results = model.predict(img_paths, save=do_save_annotated_images)
     for i, result in enumerate(results):
         classes = result.boxes.cls
         np_classes = classes.numpy()
         for target_class in [TYPE_OTHER, TYPE_TIN, TYPE_THATCH]:
             num_instances = np.count_nonzero(np_classes == target_class)
-            print (img_filename, num_instances)
+            print (test_ids[i] + "_" + str(target_class), num_instances)
     pass
 
 
