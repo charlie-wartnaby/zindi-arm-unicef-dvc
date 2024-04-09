@@ -1,4 +1,5 @@
 
+import numpy as np
 import os
 import PIL
 import pandas as pd
@@ -23,11 +24,11 @@ yolo_labels_folder = os.path.join(yolo_folder, "labels")
 yolo_test_folder   = os.path.join(yolo_folder, "test")
 
 
-do_create_label_files = False
+do_create_label_files     = False
 do_copy_train_val_to_yolo = False
-do_copy_test_to_yolo = True
-do_train = False
-
+do_copy_test_to_yolo      = False
+do_train                  = False
+do_inference_test         = True
 
 TYPE_NONE   = 0
 TYPE_OTHER  = 1
@@ -57,7 +58,10 @@ def main():
         copy_test_yolo(test_ids)
 
     if do_train:
-        train(train_df, train_epochs)
+        run_training(train_df, train_epochs)
+
+    if do_inference_test:
+        run_prediction(test_ids)
 
 
 def load_clean_metadata():
@@ -162,9 +166,27 @@ def copy_image_and_label_files(id, category):
     shutil.copy(label_src_path, label_dest_path)
 
 
-def train(train_df, epochs):
+def run_training(train_df, epochs):
     model = YOLO('yolov8n.pt')
     results = model.train(data='dvc-dataset.yaml', epochs=epochs, imgsz=640)
+
+
+def run_prediction(test_ids):
+    # id_0b0pzumg4rbl.tif
+
+    # Trying on one hardcoded example first to understand what happens
+    img_filename = 'id_0b0pzumg4rbl.tif'
+    img_path = os.path.join(yolo_test_folder, img_filename)
+    model_filename = 'runs/detect/train11/weights/best.pt'
+    model = YOLO(model_filename)
+    results = model.predict(img_path, save=True)
+    for i, result in enumerate(results):
+        classes = result.boxes.cls
+        np_classes = classes.numpy()
+        for target_class in [TYPE_OTHER, TYPE_TIN, TYPE_THATCH]:
+            num_instances = np.count_nonzero(np_classes == target_class)
+            print (img_filename, num_instances)
+    pass
 
 
 if __name__ == "__main__":
