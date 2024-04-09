@@ -32,12 +32,12 @@ runs_folder          = "runs" # relative to ~/.config/Ultralytics/settings.yaml 
 detect_output_folder = os.path.join(runs_folder, "detect")
 submission_file      = "submission.csv"
 
-do_create_label_files     = True
-do_copy_train_val_to_yolo = True
-do_copy_test_to_yolo      = True
-do_train                  = True
+do_create_label_files     = False
+do_copy_train_val_to_yolo = False
+do_copy_test_to_yolo      = False
+do_train                  = False
 do_inference_test         = True
-do_save_annotated_images  = False
+do_save_annotated_images  = True
 
 TYPE_NONE   = 0
 TYPE_OTHER  = 1
@@ -47,6 +47,7 @@ TYPE_THATCH = 3
 train_proportion    = 0.99 # maximised now for competition test not training validation
 train_epochs        = 30
 debug_max_test_imgs = 0 # zero to do all
+test_batch_size     = 16
 
 
 def main():
@@ -195,14 +196,19 @@ def run_prediction(test_ids):
         img_paths = [os.path.join(yolo_test_folder, test_id + ".tif") for test_id in test_ids]
         latest_train_dir = get_latest_dir(detect_output_folder, "train")
         model_filename = os.path.join(latest_train_dir, "weights/best.pt")
+        print(f"Using model file: {model_filename}")
         model = YOLO(model_filename)
-        results = model.predict(img_paths, save=do_save_annotated_images)
-        for i, result in enumerate(results):
-            classes = result.boxes.cls
-            np_classes = classes.numpy()
-            for target_class in [TYPE_OTHER, TYPE_TIN, TYPE_THATCH]:
-                num_instances = np.count_nonzero(np_classes == target_class)
-                fd.write(f"{test_ids[i]}_{target_class},{num_instances}\n")
+        # Run out of CUDA memory if we pass all of the images to predict simultaneously
+        for base_idx in range(0, len(test_ids), test_batch_size):
+            img_path_subset = img_paths[base_idx : base_idx + test_batch_size]
+            results = model.predict(img_path_subset, save=do_save_annotated_images)
+            for i, result in enumerate(results):
+                image_idx = base_idx + i
+                classes = result.boxes.cls
+                np_classes = classes.cpu().numpy()
+                for target_class in [TYPE_OTHER, TYPE_TIN, TYPE_THATCH]:
+                    num_instances = np.count_nonzero(np_classes == target_class)
+                    fd.write(f"{test_ids[image_idx]}_{target_class},{num_instances}\n")
 
 
 def get_latest_dir(parent_dir, subdir_base_name):
