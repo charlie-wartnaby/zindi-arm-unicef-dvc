@@ -1,3 +1,6 @@
+#!/bin/env python
+
+# (c) Charlie Wartnaby 2024
 
 import numpy as np
 import os
@@ -27,12 +30,12 @@ yolo_test_folder     = os.path.join(yolo_folder, "test")
 
 runs_folder          = "runs" # relative to ~/.config/Ultralytics/settings.yaml path
 detect_output_folder = os.path.join(runs_folder, "detect")
+submission_file      = "submission.csv"
 
-
-do_create_label_files     = False
-do_copy_train_val_to_yolo = False
-do_copy_test_to_yolo      = False
-do_train                  = False
+do_create_label_files     = True
+do_copy_train_val_to_yolo = True
+do_copy_test_to_yolo      = True
+do_train                  = True
 do_inference_test         = True
 do_save_annotated_images  = False
 
@@ -41,8 +44,9 @@ TYPE_OTHER  = 1
 TYPE_TIN    = 2
 TYPE_THATCH = 3
 
-train_proportion = 0.7
-train_epochs = 20
+train_proportion    = 0.99 # maximised now for competition test not training validation
+train_epochs        = 30
+debug_max_test_imgs = 0 # zero to do all
 
 
 def main():
@@ -152,7 +156,7 @@ def create_copy_train_val_yolo(train_ids, val_ids):
 
 
 def copy_test_yolo(test_ids):
-    print("Copying test images to YOLO directory for inference")
+    print("Copying test images to YOLO directory for inference...")
     os.makedirs(yolo_test_folder, exist_ok=True)
     for id in test_ids:
         image_filename = id + ".tif"
@@ -173,26 +177,32 @@ def copy_image_and_label_files(id, category):
 
 
 def run_training(train_df, epochs):
+    print("Running training on supplied labelled data...")
     model = YOLO('yolov8n.pt')
     results = model.train(data='dvc-dataset.yaml', epochs=epochs, imgsz=640)
 
 
 def run_prediction(test_ids):
     # id_0b0pzumg4rbl.tif is good first example
+    print("Running prediction on test images...")
 
-    # Trying on one hardcoded example first to understand what happens
-    img_paths = [os.path.join(yolo_test_folder, test_id + ".tif") for test_id in test_ids]
-    latest_train_dir = get_latest_dir(detect_output_folder, "train")
-    model_filename = os.path.join(latest_train_dir, "weights/best.pt")
-    model = YOLO(model_filename)
-    results = model.predict(img_paths, save=do_save_annotated_images)
-    for i, result in enumerate(results):
-        classes = result.boxes.cls
-        np_classes = classes.numpy()
-        for target_class in [TYPE_OTHER, TYPE_TIN, TYPE_THATCH]:
-            num_instances = np.count_nonzero(np_classes == target_class)
-            print (test_ids[i] + "_" + str(target_class), num_instances)
-    pass
+    if debug_max_test_imgs > 0:
+        test_ids = test_ids[:debug_max_test_imgs]
+
+    # Try opening file before doing anything heavy in case it fails
+    with open(submission_file, "w") as fd:
+        fd.write("image_id,Target\n")
+        img_paths = [os.path.join(yolo_test_folder, test_id + ".tif") for test_id in test_ids]
+        latest_train_dir = get_latest_dir(detect_output_folder, "train")
+        model_filename = os.path.join(latest_train_dir, "weights/best.pt")
+        model = YOLO(model_filename)
+        results = model.predict(img_paths, save=do_save_annotated_images)
+        for i, result in enumerate(results):
+            classes = result.boxes.cls
+            np_classes = classes.numpy()
+            for target_class in [TYPE_OTHER, TYPE_TIN, TYPE_THATCH]:
+                num_instances = np.count_nonzero(np_classes == target_class)
+                fd.write(f"{test_ids[i]}_{target_class},{num_instances}\n")
 
 
 def get_latest_dir(parent_dir, subdir_base_name):
