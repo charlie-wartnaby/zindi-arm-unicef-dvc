@@ -35,7 +35,7 @@ submission_file      = "submission.csv"
 do_create_label_files     = False
 do_copy_train_val_to_yolo = False
 do_copy_test_to_yolo      = False
-do_train                  = False
+do_train                  = True
 do_inference_test         = True
 do_save_annotated_images  = True
 
@@ -180,7 +180,7 @@ def copy_image_and_label_files(id, category):
 def run_training(train_df, epochs):
     print("Running training on supplied labelled data...")
     model = YOLO('yolov8n.pt')
-    results = model.train(data='dvc-dataset.yaml', epochs=epochs, imgsz=640)
+    results = model.train(data='dvc-dataset.yaml', epochs=epochs, imgsz=[1000,1000]) # imgsz should be mult of 32 but YOLO rounds up anyway
 
 
 def run_prediction(test_ids):
