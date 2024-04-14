@@ -35,7 +35,7 @@ submission_file      = "submission.csv"
 do_create_label_files     = False
 do_copy_train_val_to_yolo = False
 do_copy_test_to_yolo      = False
-do_train                  = True
+do_train                  = False
 do_inference_test         = True
 do_save_annotated_images  = True
 
@@ -201,7 +201,7 @@ def run_prediction(test_ids):
         # Run out of CUDA memory if we pass all of the images to predict simultaneously
         for base_idx in range(0, len(test_ids), test_batch_size):
             img_path_subset = img_paths[base_idx : base_idx + test_batch_size]
-            results = model.predict(img_path_subset, save=do_save_annotated_images)
+            results = model.predict(img_path_subset, save=do_save_annotated_images, conf=0.75)
             for i, result in enumerate(results):
                 image_idx = base_idx + i
                 classes = result.boxes.cls
