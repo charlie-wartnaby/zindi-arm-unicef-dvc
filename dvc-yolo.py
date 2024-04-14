@@ -35,7 +35,7 @@ submission_file      = "submission.csv"
 do_create_label_files     = False
 do_copy_train_val_to_yolo = False
 do_copy_test_to_yolo      = False
-do_train                  = False
+do_train                  = True
 do_inference_test         = True
 do_save_annotated_images  = True
 
@@ -48,7 +48,8 @@ train_proportion    = 0.99 # maximised now for competition test not training val
 train_epochs        = 30
 debug_max_test_imgs = 0 # zero to do all
 test_batch_size     = 16
-
+confidence_thresh   = 0.6
+train_imagesize     = [1024, 1024] # default 640 for expts, higher for competition
 
 def main():
     train_df, test_df = load_clean_metadata()
@@ -180,7 +181,8 @@ def copy_image_and_label_files(id, category):
 def run_training(train_df, epochs):
     print("Running training on supplied labelled data...")
     model = YOLO('yolov8n.pt')
-    results = model.train(data='dvc-dataset.yaml', epochs=epochs, imgsz=[1000,1000]) # imgsz should be mult of 32 but YOLO rounds up anyway
+    # imgsz should be mult of 32 but YOLO rounds up anyway
+    results = model.train(data='dvc-dataset.yaml', epochs=epochs, imgsz=train_imagesize, conf=confidence_thresh) 
 
 
 def run_prediction(test_ids):
@@ -201,7 +203,7 @@ def run_prediction(test_ids):
         # Run out of CUDA memory if we pass all of the images to predict simultaneously
         for base_idx in range(0, len(test_ids), test_batch_size):
             img_path_subset = img_paths[base_idx : base_idx + test_batch_size]
-            results = model.predict(img_path_subset, save=do_save_annotated_images, conf=0.75)
+            results = model.predict(img_path_subset, save=do_save_annotated_images, conf=confidence_thresh)
             for i, result in enumerate(results):
                 image_idx = base_idx + i
                 classes = result.boxes.cls
