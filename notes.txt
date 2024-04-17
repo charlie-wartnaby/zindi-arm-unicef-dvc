@@ -17,3 +17,10 @@ Useful example Kaggle notebook referenced here:
 https://zindi.africa/competitions/arm-unicef-disaster-vulnerability-challenge/discussions/20382
 https://www.kaggle.com/code/rashidrk/getting-started-with-zindi-arm-unicef-competition
 
+
+----
+When conf threshold set lower, fewer false negatives, can I eliminate false positives?
+o Sometimes got direct overlap of tin and thatch labels, so can eliminate weaker detection
+o Sometimes get strongly overlapping tin labels, so can eliminate weaker again (but can
+  get some overlap as bounding boxes not rotated about houses)
+o Some matches probably too small to be a house in context of others in same photo
