@@ -37,7 +37,7 @@ do_copy_train_val_to_yolo = False
 do_copy_test_to_yolo      = False
 do_train                  = False
 do_inference_test         = True
-do_save_annotated_images  = False
+do_save_annotated_images  = True
 
 TYPE_NONE   = 0
 TYPE_OTHER  = 1
@@ -45,13 +45,12 @@ TYPE_TIN    = 2
 TYPE_THATCH = 3
 
 train_proportion    = 0.99 # maximised now for competition test not training validation
-train_epochs        = 30
-debug_max_test_imgs = 20 # zero to do all
+train_epochs        = 10
+debug_max_test_imgs = 0 # zero to do all
 test_batch_size     = 16
-confidence_thresh   = 0.6
+confidence_thresh   = 0.3
 train_imagesize     = [1024, 1024] # default 640 for expts, higher for competition
-box_overlap_discard_thresh = 0.2
-
+iou_thresh          = 0.05 # docs not clear but smaller value rejects more overlaps
 
 def main():
     train_df, test_df = load_clean_metadata()
@@ -84,7 +83,7 @@ def load_clean_metadata():
     test_df = pd.read_csv(test_path)
 
     # category_id as supplied is blank for images with no dwellings
-    train_df["category_id"].fillna(TYPE_NONE, inplace=True)
+    train_df["category_id"] = train_df["category_id"].fillna(TYPE_NONE)
 
     return train_df, test_df
 
@@ -205,65 +204,18 @@ def run_prediction(test_ids):
         # Run out of CUDA memory if we pass all of the images to predict simultaneously
         for base_idx in range(0, len(test_ids), test_batch_size):
             img_path_subset = img_paths[base_idx : base_idx + test_batch_size]
-            results = model.predict(img_path_subset, save=do_save_annotated_images, conf=confidence_thresh)
+            results = model.predict(img_path_subset,
+                                    save=do_save_annotated_images,
+                                    conf=confidence_thresh, 
+                                    agnostic_nms=True,
+                                    iou=iou_thresh)
             for i, result in enumerate(results):
                 image_idx = base_idx + i
-                np_classes = prune_overlapping_detections(result)
+                classes = result.boxes.cls
+                np_classes = classes.cpu().numpy()
                 for target_class in [TYPE_OTHER, TYPE_TIN, TYPE_THATCH]:
                     num_instances = np.count_nonzero(np_classes == target_class)
                     fd.write(f"{test_ids[image_idx]}_{target_class},{num_instances}\n")
-
-
-def prune_overlapping_detections(result):
-    """Identify instances where we have multiple bounding boxes in one image that
-    overlap strongly and eliminate the weaker overlapping ones to reduce
-    false positives"""
-
-    # 1D vector of class labels for each bounding box:
-    np_classes = result.boxes.cls.cpu().numpy()
-
-    # Vector of array[4] with (x1, y1, x2, y2) normalised to image size for each box:
-    np_box_norm_coords = result.boxes.xyxyn.cpu().numpy()
-
-    # Relative confidence of each detection in [0, 1] range:
-    np_conf = result.boxes.conf.cpu().numpy()
-
-    box_idx = 0
-    while box_idx < np_classes.shape[0]:
-        # For each bounding box, consider the remaining ones in the list we haven't
-        # considered yet. If there is significant overlap, discard whichever has
-        # lower confidence.
-        deleted_this = False
-        other_box_idx = box_idx + 1
-        while other_box_idx < np_classes.shape[0]:
-            relative_overlap = calc_box_overlap(np_box_norm_coords[box_idx], np_box_norm_coords[other_box_idx])
-            if relative_overlap >= box_overlap_discard_thresh:
-                if np_conf[box_idx] >= np_conf[other_box_idx]:
-                    # 'This' one is better so remove other one
-                    np_classes = np.delete(np_classes, other_box_idx)
-                    np_box_norm_coords = np.delete(np_box_norm_coords, other_box_idx, axis=0)
-                    np_conf = np.delete(np_conf, other_box_idx)
-                else:
-                    # Other one is better so delete our one
-                    np_classes = np.delete(np_classes, box_idx)
-                    np_box_norm_coords = np.delete(np_box_norm_coords, box_idx)
-                    np_conf = np.delete(np_conf, box_idx)
-                    # Go to next box in list
-                    break
-            else:
-                # No significant overlap between these boxes
-                other_box_idx += 1
-        if not deleted_this:
-            box_idx += 1
-
-    return np_classes
-
-
-def calc_box_overlap(box1_norm_coords, box2_norm_coords):
-    """Calculate measure of relative overlap between two bounding boxes
-     provided in coordinates normalised to image size"""
-    
-    return 0.7
 
 
 def get_latest_dir(parent_dir, subdir_base_name):
