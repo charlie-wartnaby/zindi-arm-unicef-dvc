@@ -23,4 +23,5 @@ When conf threshold set lower, fewer false negatives, can I eliminate false posi
 o Sometimes got direct overlap of tin and thatch labels, so can eliminate weaker detection
 o Sometimes get strongly overlapping tin labels, so can eliminate weaker again (but can
   get some overlap as bounding boxes not rotated about houses)
+o Intersection over Union to determine overlaps
 o Some matches probably too small to be a house in context of others in same photo
