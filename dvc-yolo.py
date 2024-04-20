@@ -29,6 +29,8 @@ yolo_labels_folder   = os.path.join(yolo_folder, "labels")
 yolo_test_folder     = os.path.join(yolo_folder, "test")
 
 runs_folder          = "runs" # relative to ~/.config/Ultralytics/settings.yaml path
+                              # Windows: C:\Users\<user>\AppData\Roaming\Ultralytics\settings.yaml
+                              # 'data' subfolder is implicit
 detect_output_folder = os.path.join(runs_folder, "detect")
 submission_file      = "submission.csv"
 
@@ -36,20 +38,21 @@ do_create_label_files     = False
 do_copy_train_val_to_yolo = False
 do_copy_test_to_yolo      = False
 do_train                  = False
-do_inference_test         = True
-do_save_annotated_images  = True
+do_multitrain             = True
+do_inference_test         = False
+do_save_annotated_images  = False
 
 TYPE_NONE   = 0
 TYPE_OTHER  = 1
 TYPE_TIN    = 2
 TYPE_THATCH = 3
 
-train_proportion    = 0.99 # maximised now for competition test not training validation
-train_epochs        = 10
+train_proportion    = 0.7 # maximised now for competition test not training validation
+train_epochs        = 1
 debug_max_test_imgs = 0 # zero to do all
 test_batch_size     = 16
 confidence_thresh   = 0.3
-train_imagesize     = [1024, 1024] # default 640 for expts, higher for competition
+train_imagesize     = [640, 640] # default 640 for expts, higher for competition
 iou_thresh          = 0.05 # docs not clear but smaller value rejects more overlaps
 
 def main():
@@ -70,11 +73,17 @@ def main():
     if do_copy_test_to_yolo:
         copy_test_yolo(test_ids)
 
+    hyperparams = {"conf" : confidence_thresh, "iou" : iou_thresh}
+
     if do_train:
-        run_training(train_df, train_epochs)
+        run_training(train_df, train_epochs, hyperparams)
+    elif do_multitrain:
+        run_multitraining_expt(train_df, train_epochs)
+    else:
+        pass
 
     if do_inference_test:
-        run_prediction(test_ids)
+        run_prediction(test_ids, hyperparams)
 
 
 def load_clean_metadata():
@@ -179,14 +188,26 @@ def copy_image_and_label_files(id, category):
     shutil.copy(label_src_path, label_dest_path)
 
 
-def run_training(train_df, epochs):
+def run_multitraining_expt(train_df, epochs):
+    for conf_int in range(2, 7, 1):
+        for iou_int in range(0, 5, 1):
+            conf = conf_int * 0.1
+            iou = iou_int * 0.1
+            hyperparams = {"conf" : conf, "iou" : iou}
+            print(f"Running training with conf={conf} iou={iou}...")
+            run_training(train_df, epochs, hyperparams)
+            latest_train_dir = get_latest_dir(detect_output_folder, "train")
+            decorated_dirname = f"{latest_train_dir}_conf_{conf}_iou_{iou}"
+            os.rename(latest_train_dir, decorated_dirname)
+
+def run_training(train_df, epochs, hyperparams):
     print("Running training on supplied labelled data...")
     model = YOLO('yolov8n.pt')
     # imgsz should be mult of 32 but YOLO rounds up anyway
-    results = model.train(data='dvc-dataset.yaml', epochs=epochs, imgsz=train_imagesize, conf=confidence_thresh) 
+    results = model.train(data='dvc-dataset.yaml', epochs=epochs, imgsz=train_imagesize, **hyperparams) 
 
 
-def run_prediction(test_ids):
+def run_prediction(test_ids, hyperparams):
     # id_0b0pzumg4rbl.tif is good first example
     print("Running prediction on test images...")
 
@@ -206,9 +227,8 @@ def run_prediction(test_ids):
             img_path_subset = img_paths[base_idx : base_idx + test_batch_size]
             results = model.predict(img_path_subset,
                                     save=do_save_annotated_images,
-                                    conf=confidence_thresh, 
                                     agnostic_nms=True,
-                                    iou=iou_thresh)
+                                    **hyperparams)
             for i, result in enumerate(results):
                 image_idx = base_idx + i
                 classes = result.boxes.cls
