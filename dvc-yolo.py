@@ -48,11 +48,11 @@ TYPE_TIN    = 2
 TYPE_THATCH = 3
 
 train_proportion    = 0.7 # maximised now for competition test not training validation
-train_epochs        = 1
+train_epochs        = 15
 debug_max_test_imgs = 0 # zero to do all
 test_batch_size     = 16
 confidence_thresh   = 0.3
-train_imagesize     = [640, 640] # default 640 for expts, higher for competition
+train_imagesize     = (640, 640) # default 640 for expts, higher for competition
 iou_thresh          = 0.05 # docs not clear but smaller value rejects more overlaps
 
 def main():
@@ -197,7 +197,7 @@ def run_multitraining_expt(train_df, epochs):
             print(f"Running training with conf={conf} iou={iou}...")
             run_training(train_df, epochs, hyperparams)
             latest_train_dir = get_latest_dir(detect_output_folder, "train")
-            decorated_dirname = f"{latest_train_dir}_conf_{conf}_iou_{iou}"
+            decorated_dirname = "%s_conf_%.1f_iou_%.1f" % (latest_train_dir, conf, iou)
             os.rename(latest_train_dir, decorated_dirname)
 
 def run_training(train_df, epochs, hyperparams):
