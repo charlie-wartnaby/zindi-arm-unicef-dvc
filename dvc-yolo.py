@@ -38,22 +38,22 @@ do_create_label_files     = False
 do_copy_train_val_to_yolo = False
 do_copy_test_to_yolo      = False
 do_train                  = False
-do_multitrain             = True
-do_inference_test         = False
-do_save_annotated_images  = False
+do_multitrain             = False
+do_inference_test         = True
+do_save_annotated_images  = True
 
 TYPE_NONE   = 0
 TYPE_OTHER  = 1
 TYPE_TIN    = 2
 TYPE_THATCH = 3
 
-train_proportion    = 0.7 # maximised now for competition test not training validation
-train_epochs        = 15
+train_proportion    = 0.99 # maximised now for competition test not training validation
+train_epochs        = 30
 debug_max_test_imgs = 0 # zero to do all
 test_batch_size     = 16
-confidence_thresh   = 0.3
-train_imagesize     = (640, 640) # default 640 for expts, higher for competition
-iou_thresh          = 0.05 # docs not clear but smaller value rejects more overlaps
+confidence_thresh   = 0.5
+train_imagesize     = (1024, 1024) # default 640 for expts, higher for competition
+iou_thresh          = 0.15 # docs not clear but smaller value rejects more overlaps
 
 def main():
     train_df, test_df = load_clean_metadata()
