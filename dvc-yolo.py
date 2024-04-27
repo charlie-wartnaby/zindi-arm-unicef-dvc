@@ -62,7 +62,7 @@ test_batch_size     = 16
 confidence_thresh   = 0.5
 train_imagesize     = (1024, 1024) # default 640 for expts, higher for competition
 iou_thresh          = 0.15 # docs not clear but smaller value rejects more overlaps
-box_too_small_factor = 0.3
+box_too_small_factor = 0.05
 
 
 def main():
