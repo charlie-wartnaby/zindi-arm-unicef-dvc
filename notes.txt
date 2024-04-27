@@ -13,17 +13,15 @@ id_uawi0k5spci5_3	2  [count of 'thatch'=3 ...]
 
 So bounding boxes not required for submission, only to train something that can count.
 
-Useful example Kaggle notebook referenced here:
+Useful example Kaggle notebook referenced here shows can do with YOLO:
 https://zindi.africa/competitions/arm-unicef-disaster-vulnerability-challenge/discussions/20382
 https://www.kaggle.com/code/rashidrk/getting-started-with-zindi-arm-unicef-competition
 
 
 ----
 When conf threshold set lower, fewer false negatives, can I eliminate false positives?
-o Sometimes got direct overlap of tin and thatch labels, so can eliminate weaker detection
-o Sometimes get strongly overlapping tin labels, so can eliminate weaker again (but can
-  get some overlap as bounding boxes not rotated about houses)
-o Some matches probably too small to be a house in context of others in same photo
+o Now done Non-Maximal Suppression to hopefully deal with overlapping hits
+o Eliminating very small boxes didn't help stats (didn't try with lower conf though)
 o Aspect ratio: very thin buildings more likely to be animal shelters? But to get aspect
   ratio correctly would have to rotate to get width/height dimensions, maybe using
   segmentation to get proper shape
