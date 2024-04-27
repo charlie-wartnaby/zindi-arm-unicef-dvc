@@ -46,7 +46,7 @@ do_copy_test_to_yolo      = False
 do_train                  = False
 do_multitrain             = False
 do_inference_test         = True
-do_save_annotated_images  = True
+do_save_annotated_images  = False
 
 # Classes as used in provided data
 TYPE_NONE   = 0
@@ -62,6 +62,7 @@ test_batch_size     = 16
 confidence_thresh   = 0.5
 train_imagesize     = (1024, 1024) # default 640 for expts, higher for competition
 iou_thresh          = 0.15 # docs not clear but smaller value rejects more overlaps
+box_too_small_factor = 0.3
 
 
 def main():
@@ -250,11 +251,42 @@ def run_prediction(test_ids, hyperparams):
                                     **hyperparams)
             for i, result in enumerate(results):
                 image_idx = base_idx + i
-                classes = result.boxes.cls
-                np_classes = classes.cpu().numpy()
+                np_classes = remove_small_objects(result)
                 for target_class in [TYPE_OTHER, TYPE_TIN, TYPE_THATCH]:
                     num_instances = np.count_nonzero(np_classes == target_class)
                     fd.write(f"{test_ids[image_idx]}_{target_class},{num_instances}\n")
+
+
+def remove_small_objects(result):
+    """Where we have multiple hits, remove any that are suspiciously small
+    as they are likely to not be actual houses"""
+
+    # 1D vector of class labels for each bounding box:
+    np_classes = result.boxes.cls.cpu().numpy()
+
+    if np_classes.shape[0] > 1:
+        # Vector of array[4] with (x, y, width, height) normalised to image size for each box:
+        np_box_norm_coords = result.boxes.xywhn.cpu().numpy()
+        box_areas = []
+        largest_area = 0.0
+        for box_idx in range(np_classes.shape[0]):
+            box_area = np_box_norm_coords[box_idx, 2] * np_box_norm_coords[box_idx, 3]
+            box_areas.append(box_area)
+            if box_area > largest_area:
+                largest_area = box_area
+
+        box_idx = 0
+        while box_idx < np_classes.shape[0]:
+            # For each bounding box, consider whether it is 'small' compared to the biggest
+            # we found in this image
+            if box_areas[box_idx] < largest_area * box_too_small_factor:
+                del box_areas[box_idx]
+                np_classes = np.delete(np_classes, box_idx)
+            else:
+                box_idx += 1
+
+    return np_classes
+
 
 
 def get_latest_dir(parent_dir, subdir_base_name):
