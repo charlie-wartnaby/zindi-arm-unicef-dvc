@@ -1,6 +1,11 @@
 #!/bin/env python
 
 # (c) Charlie Wartnaby 2024
+#
+# This is my entry for this competition:
+# https://zindi.africa/competitions/arm-unicef-disaster-vulnerability-challenge
+# See README.md for more
+
 
 import numpy as np
 import os
@@ -34,6 +39,7 @@ runs_folder          = "runs" # relative to ~/.config/Ultralytics/settings.yaml 
 detect_output_folder = os.path.join(runs_folder, "detect")
 submission_file      = "submission.csv"
 
+# Control flags for what kind of run to do
 do_create_label_files     = False
 do_copy_train_val_to_yolo = False
 do_copy_test_to_yolo      = False
@@ -42,11 +48,13 @@ do_multitrain             = False
 do_inference_test         = True
 do_save_annotated_images  = True
 
+# Classes as used in provided data
 TYPE_NONE   = 0
 TYPE_OTHER  = 1
 TYPE_TIN    = 2
 TYPE_THATCH = 3
 
+# Hyperparameters
 train_proportion    = 0.99 # maximised now for competition test not training validation
 train_epochs        = 30
 debug_max_test_imgs = 0 # zero to do all
@@ -55,7 +63,10 @@ confidence_thresh   = 0.5
 train_imagesize     = (1024, 1024) # default 640 for expts, higher for competition
 iou_thresh          = 0.15 # docs not clear but smaller value rejects more overlaps
 
+
 def main():
+    """Top-level execution of program"""
+
     train_df, test_df = load_clean_metadata()
 
     train_image_dict = collate_image_labels(train_df)
@@ -143,6 +154,8 @@ def create_training_label_files(image_dict):
 
 
 def train_val_split(train_image_dict, train_proportion):
+    """Split training data into training and validation sets"""
+
     random.seed(6119) # Competition requires deterministic output
     all_ids = list(train_image_dict.keys())
     random.shuffle(all_ids)
@@ -178,6 +191,7 @@ def copy_test_yolo(test_ids):
 
         
 def copy_image_and_label_files(id, category):
+    """Copy files for one image to required YOLO locations"""
     image_filename = id + ".tif"
     label_filename = id + ".txt"
     image_src_path = os.path.join(images_folder, image_filename)
@@ -189,6 +203,8 @@ def copy_image_and_label_files(id, category):
 
 
 def run_multitraining_expt(train_df, epochs):
+    """Iterate over combinations of hyperparameters to help find optimum"""
+
     for conf_int in range(2, 7, 1):
         for iou_int in range(0, 5, 1):
             conf = conf_int * 0.1
@@ -200,6 +216,7 @@ def run_multitraining_expt(train_df, epochs):
             decorated_dirname = "%s_conf_%.1f_iou_%.1f" % (latest_train_dir, conf, iou)
             os.rename(latest_train_dir, decorated_dirname)
 
+
 def run_training(train_df, epochs, hyperparams):
     print("Running training on supplied labelled data...")
     model = YOLO('yolov8n.pt')
@@ -208,6 +225,8 @@ def run_training(train_df, epochs, hyperparams):
 
 
 def run_prediction(test_ids, hyperparams):
+    """Apply trained model to test set for competition submission"""
+    
     # id_0b0pzumg4rbl.tif is good first example
     print("Running prediction on test images...")
 
