@@ -55,14 +55,14 @@ TYPE_TIN    = 2
 TYPE_THATCH = 3
 
 # Hyperparameters
-train_proportion    = 0.99 # maximised now for competition test not training validation
-train_epochs        = 30
-debug_max_test_imgs = 0 # zero to do all
-test_batch_size     = 16
-confidence_thresh   = 0.5
-train_imagesize     = (1024, 1024) # default 640 for expts, higher for competition
-iou_thresh          = 0.15 # docs not clear but smaller value rejects more overlaps
-box_too_small_factor = 0.03
+train_proportion     = 0.99 # maximised now for competition test not training validation
+train_epochs         = 30
+debug_max_test_imgs  = 0 # zero to do all
+test_batch_size      = 16
+confidence_thresh    = 0.5
+train_imagesize      = (1024, 1024) # default 640 for expts, higher for competition
+iou_thresh           = 0.15 # docs not clear but smaller value rejects more overlaps
+box_too_small_factor = 0.03 # Eliminating hits too small to be houses but doesn't seem to help
 
 
 def main():
